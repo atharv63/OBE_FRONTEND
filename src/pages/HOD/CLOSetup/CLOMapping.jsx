@@ -56,7 +56,7 @@ const CLOMapping = () => {
     // 2️⃣ Ensure CLOs exist
     // ---------------------------------
     // try DB first
-    const dbClos = await HOD_API.clos.getAll(resolvedCourseId, user?.token);
+    const dbClos = await HOD_API.clos.getCLOs(resolvedCourseId, user?.token);
 
     if (dbClos?.data?.length > 0) {
       savedClos = dbClos.data;
