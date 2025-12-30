@@ -14,24 +14,26 @@ const CLOList = () => {
     loadCourse();
   }, []);
 
-  const loadCLOs = async () => {
-    try {
-      const res = await hodAPI.getCLOsByCourse(courseId);
-      setClos(res.data || []);
-    } catch (err) {
-      console.error("Error loading CLOs:", err);
-    }
-  };
+// Change this:
+const loadCLOs = async () => {
+  try {
+    const res = await HOD_API.clos.getCLOsByCourse; 
+console.log(res);
+    setClos(res.data || []);
+  } catch (err) {
+    console.error("Error loading CLOs:", err);
+  }
+};
 
-  const loadCourse = async () => {
-    try {
-      const res = await hodAPI.getCourseById(courseId);
-      setCourse(res.data);
-    } catch (err) {
-      console.log("Course load error:", err);
-    }
-  };
 
+const loadCourse = async () => {
+  try {
+    const res = await HOD_API.courses.getCourseById(courseId); 
+    setCourse(res.data);
+  } catch (err) {
+    console.log("Course load error:", err);
+  }
+};
   const handleEdit = (clo) => {
     navigate(`/hod/courses/${courseId}/clos/edit/${clo.id}`);
   };
