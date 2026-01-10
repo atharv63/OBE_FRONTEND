@@ -324,102 +324,289 @@ const AssignFaculty = () => {
     setOpenWorkloadDialog(true);
   };
 
+// const handleUpdateAssignment = async (assignment) => {
+//   try {
+//     console.log("✏️ HOD updating/reassigning assignment:", assignment);
+    
+//     // Get available faculties (assuming you have access to faculties list)
+//     // Filter out current faculty if you want
+//     const availableFaculties = faculties.filter(f => f.id !== assignment.facultyId);
+    
+//     // Create a better prompt showing available faculties
+//     const facultyOptions = availableFaculties
+//       .map(f => `${f.id}: ${f.name}`)
+//       .join('\n');
+    
+//     // 1. Ask if user wants to reassign faculty
+//     const reassignChoice = confirm(
+//       `Current Faculty: ${assignment.facultyName} (ID: ${assignment.facultyId})\n\n` +
+//       `Do you want to reassign this course to a different faculty?`
+//     );
+    
+//     let newFacultyId = null;
+    
+//     if (reassignChoice) {
+//       // 2. Show available faculties for reassignment
+//       newFacultyId = prompt(
+//         `Available Faculties:\n${facultyOptions}\n\n` +
+//         `Enter Faculty ID to reassign to:`,
+//         ''
+//       );
+      
+//       if (newFacultyId === null) return; // User cancelled
+      
+//       if (newFacultyId.trim() === '') {
+//         newFacultyId = null; // User didn't enter anything
+//       } else if (newFacultyId === assignment.facultyId) {
+//         alert("⚠️ That's the same faculty! No change will be made.");
+//         newFacultyId = null;
+//       }
+//     }
+    
+//     // 3. Get teaching methodology
+//     const newTeachingMethod = prompt(
+//       'Enter teaching methodology:',
+//       assignment.teachingMethodology || ''
+//     );
+    
+//     if (newTeachingMethod === null) return;
+    
+//     // 4. Get assessment mode
+//     const newAssessmentMode = prompt(
+//       'Enter assessment mode:',
+//       assignment.assessmentMode || ''
+//     );
+    
+//     if (newAssessmentMode === null) return;
+    
+//     // 5. Prepare update data
+//     const updateData = {
+//       teachingMethodology: newTeachingMethod,
+//       assessmentMode: newAssessmentMode,
+//     };
+    
+//     // Only add newFacultyId if user entered a different one
+//     if (newFacultyId && newFacultyId !== assignment.facultyId) {
+//       updateData.newFacultyId = newFacultyId;
+//     }
+    
+//     console.log("📤 Sending update data:", updateData);
+    
+//     // 6. Call the API
+//     await HOD_API.assignments.updateAssignment(
+//       assignment.courseId,
+//       assignment.facultyId,
+//       assignment.semester,
+//       assignment.year,
+//       updateData
+//     );
+    
+//     // 7. Show success message
+//     if (newFacultyId) {
+//       alert(`✅ Faculty reassigned successfully!\n\n` +
+//             `Course: ${assignment.courseName}\n` +
+//             `Old Faculty: ${assignment.facultyName}\n` +
+//             `New Faculty ID: ${newFacultyId}`);
+//     } else {
+//       alert('✅ Assignment details updated successfully!');
+//     }
+    
+//     // 8. Refresh assignments list
+//     fetchAssignments();
+    
+//   } catch (error) {
+//     console.error('❌ Error updating assignment:', error);
+//     const errorMessage = error.response?.data?.error || 
+//                         error.message || 
+//                         'Failed to update assignment';
+//     alert(`Error: ${errorMessage}`);
+//   }
+// };
 const handleUpdateAssignment = async (assignment) => {
   try {
     console.log("✏️ HOD updating/reassigning assignment:", assignment);
     
-    // Get available faculties (assuming you have access to faculties list)
-    // Filter out current faculty if you want
+    // Filter out current faculty from available list
     const availableFaculties = faculties.filter(f => f.id !== assignment.facultyId);
     
-    // Create a better prompt showing available faculties
-    const facultyOptions = availableFaculties
-      .map(f => `${f.id}: ${f.name}`)
-      .join('\n');
+    if (availableFaculties.length === 0) {
+      alert('No other faculty members available for reassignment.');
+      return;
+    }
     
-    // 1. Ask if user wants to reassign faculty
-    const reassignChoice = confirm(
-      `Current Faculty: ${assignment.facultyName} (ID: ${assignment.facultyId})\n\n` +
-      `Do you want to reassign this course to a different faculty?`
-    );
+    // Create dialog using DOM instead of prompt
+    const dialog = document.createElement('div');
+    dialog.className = 'update-assignment-modal';
+    dialog.innerHTML = `
+      <div class="modal-overlay" style="display: flex;">
+        <div class="modal" style="max-width: 500px;">
+          <div class="modal-header">
+            <h3>Update Assignment</h3>
+            <button class="modal-close" onclick="this.closest('.update-assignment-modal').remove()">×</button>
+          </div>
+          <div class="modal-body">
+            <div class="form-section">
+              <h4>Course: ${assignment.courseName || 'N/A'}</h4>
+              <p>Current Faculty: <strong>${assignment.facultyName || 'N/A'}</strong></p>
+            </div>
+            
+            <div class="form-group">
+              <label>Reassign to New Faculty (Optional)</label>
+              <select id="newFacultySelect" class="faculty-select">
+                <option value="">-- Keep current faculty --</option>
+                ${availableFaculties.map(f => `
+                  <option value="${f.id}">
+                    ${f.name} • ${f.designation || 'No designation'} • ${f.user?.email || 'No email'}
+                  </option>
+                `).join('')}
+              </select>
+            </div>
+            
+            <div class="form-group">
+              <label>Teaching Methodology</label>
+              <input 
+                type="text" 
+                id="teachingMethodology" 
+                placeholder="e.g., Lecture-based, Flipped Classroom, Lab Sessions"
+                value="${assignment.teachingMethodology || ''}"
+              >
+            </div>
+            
+            <div class="form-group">
+              <label>Assessment Mode</label>
+              <input 
+                type="text" 
+                id="assessmentMode" 
+                placeholder="e.g., Continuous Assessment, Final Exam, Project-based"
+                value="${assignment.assessmentMode || ''}"
+              >
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button class="btn btn-secondary" onclick="this.closest('.update-assignment-modal').remove()">
+              Cancel
+            </button>
+            <button class="btn btn-primary" id="updateAssignmentBtn">
+              Update Assignment
+            </button>
+          </div>
+        </div>
+      </div>
+    `;
     
-    let newFacultyId = null;
-    
-    if (reassignChoice) {
-      // 2. Show available faculties for reassignment
-      newFacultyId = prompt(
-        `Available Faculties:\n${facultyOptions}\n\n` +
-        `Enter Faculty ID to reassign to:`,
-        ''
-      );
-      
-      if (newFacultyId === null) return; // User cancelled
-      
-      if (newFacultyId.trim() === '') {
-        newFacultyId = null; // User didn't enter anything
-      } else if (newFacultyId === assignment.facultyId) {
-        alert("⚠️ That's the same faculty! No change will be made.");
-        newFacultyId = null;
+    // Add styles for the modal
+    const style = document.createElement('style');
+    style.textContent = `
+      .update-assignment-modal .faculty-select {
+        width: 100%;
+        padding: 10px;
+        border: 1px solid #ddd;
+        border-radius: 4px;
+        font-size: 14px;
       }
-    }
+      .update-assignment-modal .faculty-select option {
+        padding: 8px;
+      }
+    `;
+    dialog.appendChild(style);
     
-    // 3. Get teaching methodology
-    const newTeachingMethod = prompt(
-      'Enter teaching methodology:',
-      assignment.teachingMethodology || ''
-    );
+    // Add to document
+    document.body.appendChild(dialog);
     
-    if (newTeachingMethod === null) return;
-    
-    // 4. Get assessment mode
-    const newAssessmentMode = prompt(
-      'Enter assessment mode:',
-      assignment.assessmentMode || ''
-    );
-    
-    if (newAssessmentMode === null) return;
-    
-    // 5. Prepare update data
-    const updateData = {
-      teachingMethodology: newTeachingMethod,
-      assessmentMode: newAssessmentMode,
-    };
-    
-    // Only add newFacultyId if user entered a different one
-    if (newFacultyId && newFacultyId !== assignment.facultyId) {
-      updateData.newFacultyId = newFacultyId;
-    }
-    
-    console.log("📤 Sending update data:", updateData);
-    
-    // 6. Call the API
-    await HOD_API.assignments.updateAssignment(
-      assignment.courseId,
-      assignment.facultyId,
-      assignment.semester,
-      assignment.year,
-      updateData
-    );
-    
-    // 7. Show success message
-    if (newFacultyId) {
-      alert(`✅ Faculty reassigned successfully!\n\n` +
-            `Course: ${assignment.courseName}\n` +
-            `Old Faculty: ${assignment.facultyName}\n` +
-            `New Faculty ID: ${newFacultyId}`);
-    } else {
-      alert('✅ Assignment details updated successfully!');
-    }
-    
-    // 8. Refresh assignments list
-    fetchAssignments();
+    // Wait for user interaction
+    return new Promise((resolve) => {
+      const updateBtn = dialog.querySelector('#updateAssignmentBtn');
+      const closeBtn = dialog.querySelector('.modal-close');
+      const cancelBtn = dialog.querySelector('.btn-secondary');
+      
+      const cleanup = () => {
+        dialog.remove();
+        resolve(null); // User cancelled
+      };
+      
+      const handleUpdate = async () => {
+        const newFacultyId = dialog.querySelector('#newFacultySelect').value;
+        const teachingMethodology = dialog.querySelector('#teachingMethodology').value;
+        const assessmentMode = dialog.querySelector('#assessmentMode').value;
+        
+        // Validation
+        if (!teachingMethodology.trim() || !assessmentMode.trim()) {
+          alert('Please fill in both Teaching Methodology and Assessment Mode');
+          return;
+        }
+        
+        // Prepare update data
+        const updateData = {
+          teachingMethodology: teachingMethodology.trim(),
+          assessmentMode: assessmentMode.trim(),
+        };
+        
+        // Only add newFacultyId if user selected a different one
+        if (newFacultyId && newFacultyId !== assignment.facultyId) {
+          updateData.newFacultyId = newFacultyId;
+        }
+        
+        console.log("📤 Sending update data:", updateData);
+        
+        try {
+          // Call the API
+          await HOD_API.assignments.updateAssignment(
+            assignment.courseId,
+            assignment.facultyId,
+            assignment.semester,
+            assignment.year,
+            updateData
+          );
+          
+          // Get new faculty name for success message
+          let newFacultyName = assignment.facultyName;
+          if (newFacultyId && newFacultyId !== assignment.facultyId) {
+            const newFaculty = faculties.find(f => f.id === newFacultyId);
+            newFacultyName = newFaculty ? newFaculty.name : `ID: ${newFacultyId}`;
+          }
+          
+          // Show success message
+          dialog.remove();
+          if (newFacultyId && newFacultyId !== assignment.facultyId) {
+            alert(`✅ Faculty reassigned successfully!\n\n` +
+                  `Course: ${assignment.courseName}\n` +
+                  `Old Faculty: ${assignment.facultyName}\n` +
+                  `New Faculty: ${newFacultyName}`);
+          } else {
+            alert('✅ Assignment details updated successfully!');
+          }
+          
+          // Refresh assignments list
+          fetchAssignments();
+          resolve(true);
+          
+        } catch (error) {
+          console.error('❌ Error updating assignment:', error);
+          const errorMessage = error.response?.data?.error || 
+                              error.message || 
+                              'Failed to update assignment';
+          alert(`Error: ${errorMessage}`);
+        }
+      };
+      
+      updateBtn.addEventListener('click', handleUpdate);
+      closeBtn.addEventListener('click', cleanup);
+      cancelBtn.addEventListener('click', cleanup);
+      
+      // Handle escape key
+      dialog.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') cleanup();
+      });
+      
+      // Handle click outside modal
+      dialog.querySelector('.modal-overlay').addEventListener('click', (e) => {
+        if (e.target === e.currentTarget) cleanup();
+      });
+    });
     
   } catch (error) {
-    console.error('❌ Error updating assignment:', error);
-    const errorMessage = error.response?.data?.error || 
-                        error.message || 
-                        'Failed to update assignment';
-    alert(`Error: ${errorMessage}`);
+    console.error('❌ Error in update assignment dialog:', error);
+    alert('An error occurred while opening the update dialog');
   }
 };
   const handleRemoveAssignment = async (assignment) => {
@@ -1709,6 +1896,27 @@ const styles = `
     height: 50px;
     font-size: 20px;
   }
+    /* Add to existing styles */
+.faculty-select {
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  font-size: 14px;
+  background-color: white;
+  transition: border-color 0.2s;
+}
+
+.faculty-select:focus {
+  outline: none;
+  border-color: #3498db;
+  box-shadow: 0 0 0 3px rgba(52, 152, 219, 0.1);
+}
+
+.faculty-select option {
+  padding: 8px;
+  font-size: 14px;
+}
   
   .modal-body,
   .modal-header,

@@ -21,7 +21,9 @@ const Login = () => {
 
     try {
       await login(credentials);
-      navigate("/dashboard");
+      
+        navigate("/faculty/dashboard");
+    
     } catch (err) {
       setError(err.response?.data?.error || "Login failed");
     } finally {
@@ -106,11 +108,12 @@ const Login = () => {
           </p>
 
           <p className="text-sm text-gray-700">
-            <strong>HOD:</strong> hod@college.edu / hod123
+            <strong>HOD:</strong> hod.pg@college.edu, hod.cs@college.edu
           </p>
 
           <p className="text-sm text-gray-700">
-            <strong>Faculty:</strong> faculty.cse@obe.edu / faculty123
+            <strong>Faculty:</strong> sarah.w@college.edu , jane.doe@college.edu
+            password: password123
           </p>
         </div>
       </div>
